@@ -1,6 +1,7 @@
 import { createWalletClient, http, createPublicClient } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { mainnet } from 'viem/chains';
+import erc20Abi from './abi/ERC20.json';
 
 const PRIVIDIUM_API = 'https://api.zksync-os-sandbox-10.zksync.dev';
 const PRIVATE_KEY = process.env.PRIVATE_KEY_MAIN;
@@ -10,24 +11,25 @@ const DOMAIN = 'user-panel.zksync-os-sandbox-10.zksync.dev';
 let currentToken: string = '';
 // Expiration of current token
 let tokenExpiresAt: Date = new Date(1, 1, 1);
+let currentAccount;
 
 async function authenticate() {
-  console.log("Authenticating...");
-  const account = privateKeyToAccount(PRIVATE_KEY);
+  currentAccount = privateKeyToAccount(PRIVATE_KEY);
+  console.log("Authenticating account:", currentAccount.address);
 
   // Step 1: Request SIWE message
   const siweResponse = await fetch(`${PRIVIDIUM_API}/api/siwe-messages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      address: account.address,
+      address: currentAccount.address,
       domain: DOMAIN
     })
   });
   const siweData = await siweResponse.json();
 
   // Step 2: Sign the message
-  const signature = await account.signMessage({
+  const signature = await currentAccount.signMessage({
     message: siweData.msg
   });
 
@@ -89,17 +91,26 @@ async function main() {
   // Authenticate
   await authenticate();
 
-  // Call RPC method
-  // const rpcResults = await callRpc(currentToken, 'eth_chainId');
-  const rpcResults = await callRpc(currentToken, 'eth_call', [
-    {
-      "from": "0x48d206948C366396a86A449DdD085FDbfC280B4b",
-      "to": "0x0e99AE824c2a935ae8b9232192FD4ae70D89DB5a",
-      "data": "0x06fdde03"
-    },
-    "latest"
-  ]);
-  console.log("rpcResults:", rpcResults);
+  // Call balanceOf via viem publicClient
+  const publicClient = createPublicClient({
+    transport: http(`${PRIVIDIUM_API}/rpc`, {
+      fetchOptions: {
+        headers: { Authorization: `Bearer ${currentToken}` }
+      }
+    })
+  });
+
+  const balance = await publicClient.readContract({
+    account: currentAccount.address,
+    address: '0x0e99AE824c2a935ae8b9232192FD4ae70D89DB5a',
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: [
+      // '0x5ff4e90Efa2B88cf3cA92D63d244a78a88219Abf'
+      currentAccount.address
+    ]
+  });
+  console.log('balance:', balance);
 
   // Call REST endpoint
   const profile = await getMyProfile();
