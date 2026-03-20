@@ -1,15 +1,34 @@
-# frontend
+## Web app
 
-To install dependencies:
+React app with wallet-based SIWE authentication against the Prividium RPC.
 
-```bash
+```sh
+cd frontend
 bun install
+bun run dev
 ```
 
-To run:
+Open `http://localhost:5173`, then:
 
-```bash
-bun run index.ts
+1. **Connect Wallet** — connects MetaMask (or any injected wallet)
+2. **Sign In with Wallet** — requests a SIWE message, prompts a signature, exchanges it for a Bearer token
+3. **Dashboard** — shows your ERC-20 balance and profile from the Prividium API
+
+The Vite dev server proxies `/api` and `/rpc` to `https://api.zksync-os-sandbox-10.zksync.dev` to avoid CORS issues.
+
+## CLI script
+
+Authenticates with a hardcoded private key and prints balance + profile to stdout.
+
+```sh
+cd frontend
+cp .env.example .env   # add PRIVATE_KEY_MAIN
+bun run auth
 ```
 
-This project was created using `bun init` in bun v1.2.9. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+`.env`:
+```
+PRIVATE_KEY_MAIN=0x...
+```
+
+---
